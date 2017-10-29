@@ -1,0 +1,9 @@
+numpy
+tensorflow
+keras
+matplotlib
+plotly
+pandas
+theano
+sklearn
+scipy
