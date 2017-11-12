@@ -4,6 +4,6 @@ keras
 matplotlib
 plotly
 pandas
-theano
 sklearn
 scipy
+progressbar2
