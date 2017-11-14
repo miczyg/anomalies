@@ -106,7 +106,7 @@ train, test = supervised_values[0:-12], supervised_values[-12:]
 scaler, train_scaled, test_scaled = scale(train, test)
 
 # repeat experiment
-repeats = 30
+repeats = 50
 error_scores = list()
 for r in range(repeats):
     # fit the model
@@ -127,6 +127,7 @@ for r in range(repeats):
         # store forecast
         predictions.append(yhat)
     # report performance
+    # pyplot.plot(predictions)
     rmse = sqrt(mean_squared_error(raw_values[-12:], predictions))
     print('%d) Test RMSE: %.3f' % (r + 1, rmse))
     error_scores.append(rmse)
