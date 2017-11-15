@@ -29,7 +29,7 @@ def plot_results_multiple(predicted_data, true_data, prediction_len):
 if __name__ == '__main__':
     global_start_time = time.time()
     epochs = 1
-    seq_len = 150
+    seq_len = 10
 
     print('> Loading data... ')
 
