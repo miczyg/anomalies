@@ -7,3 +7,4 @@ pandas
 sklearn
 scipy
 progressbar2
+bokeh

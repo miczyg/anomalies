@@ -2,8 +2,8 @@ import datetime
 import pandas
 import numpy as np
 
-# DATASET = "test"
-DATASET = "training"
+DATASET = "test"
+# DATASET = "training"
 NUM_SAMPLES = 10000
 
 def get_single_column(file, column, nrows):
@@ -71,19 +71,20 @@ def get_y_rangename(val):
 
 def plot_bokeh(df, labels = None):
     from bokeh.plotting import figure, output_file, save, show
-    from bokeh.palettes import Spectral6
+    from bokeh.palettes import Spectral11 as color_palette
     from bokeh.models import LinearAxis, Range1d
 
     # the number of columns is the number of lines that we will make
     numlines = len(df.columns)
+    print(numlines)
 
     # import color pallet
-    mypalette = Spectral6[0:numlines]
-
+    mypalette = color_palette[0:numlines]
+    print(len(mypalette))
     # make a list of our columns
     col = []
     [col.append(i) for i in df.columns[1:]]
-
+    print(col)
     p = figure(x_axis_type="datetime", title="Sensor values {} data".format(DATASET),
                width=1080, height=720, y_range=(0, 15))
     p.xaxis.axis_label = 'Date'
@@ -97,6 +98,7 @@ def plot_bokeh(df, labels = None):
 
     # loop through our columns and colours
     for (columnnames, colore) in zip(col, mypalette):
+        print("Plotting line for {}".format(columnnames))
         p.line(df.datetime, df[columnnames],
                legend=columnnames,
                color=colore,
@@ -115,16 +117,13 @@ if __name__ == '__main__':
     label_col = 42
     rows_to_read = NUM_SAMPLES
     cols_to_read = 5
-    df = pandas.read_csv("../data/{}_data.csv".format(DATASET), nrows=rows_to_read, header=None)
+    df = pandas.read_csv("../data/{}_data.csv".format(DATASET), nrows=NUM_SAMPLES, header=None)
                          # usecols=[i for i in range(cols_to_read + 1)] + [label_col])
     print(len(df.columns))
     df.columns = ["datetime"] + ["value{}".format(i) for i in range(len(df.columns) - 2)] + ["labels"]
     labels = df["labels"]
     df = df[df.columns[:-1]]
-    df.datetime = df.datetime.map(
-            lambda x: datetime.datetime.strptime(
-                str(x), ' %Y-%m-%d  %H:%M:%S ')
-        )
+    df.datetime = pandas.to_datetime(df.datetime)
     # data
     # plot_matplot(df)
     plot_bokeh(df, labels)
