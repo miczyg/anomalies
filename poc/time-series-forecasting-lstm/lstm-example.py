@@ -12,11 +12,24 @@ from math import sqrt
 from matplotlib import pyplot
 import numpy
 import progressbar
+from helpers.data_reader import read_dataframe
 
+from bokeh.plotting import figure, output_file, save, show, ColumnDataSource
+from bokeh.palettes import Spectral3 as color_palette
+from bokeh.models import HoverTool
+
+
+# sieć dla każdego
+# od awarii iść w dwóch kierunkach -> do sprawdzenia co się dzieje dla każdego parametru
+#
 
 # date-time parsing function for loading the dataset
 def parser(x):
     return datetime.strptime('190' + x, '%Y-%m')
+
+
+def real_parser(x):
+    return datetime.strptime(x, ' %Y-%m-%d  %H:%M:%S ')
 
 
 # frame a sequence as a supervised learning problem
@@ -89,24 +102,29 @@ def forecast_lstm(model, batch_size, X):
 
 
 # load dataset
-series = read_csv('shampoo-sales.csv', header=0, parse_dates=[0], index_col=0, squeeze=True, date_parser=parser)
+num_rows = 100000
+label_col = 42
+series, labels = read_dataframe("../../data/training_data.csv", num_rows, usecols=[0, 1, label_col],
+                                has_labels=True)
 
 # transform data to be stationary
-raw_values = series.values
+raw_values = series.value0.values
 diff_values = difference(raw_values, 1)
 
 # transform data to be supervised learning
 supervised = timeseries_to_supervised(diff_values, 1)
 supervised_values = supervised.values
-
+test_prct = 0.25
+test_num = int(test_prct * num_rows)
 # split data into train and test-sets
-train, test = supervised_values[0:-12], supervised_values[-12:]
+train, test = supervised_values[0:-test_num], supervised_values[-test_num:]
 
 # transform the scale of the data
 scaler, train_scaled, test_scaled = scale(train, test)
 
 # fit the model
-lstm_model = fit_lstm(train_scaled, 1, 3000, 4)
+lstm_model = fit_lstm(train_scaled, 1, 1, 4)
+
 # forecast the entire training dataset to build up state for forecasting
 train_reshaped = train_scaled[:, 0].reshape(len(train_scaled), 1, 1)
 lstm_model.predict(train_reshaped, batch_size=1)
@@ -123,13 +141,41 @@ for i in range(len(test_scaled)):
     yhat = inverse_difference(raw_values, yhat, len(test_scaled) + 1 - i)
     # store forecast
     predictions.append(yhat)
-    expected = raw_values[len(train) + i + 1]
-    print('Month=%d, Predicted=%f, Expected=%f' % (i + 1, yhat, expected))
 
 # report performance
-rmse = sqrt(mean_squared_error(raw_values[-12:], predictions))
+rmse = sqrt(mean_squared_error(raw_values[-test_num:], predictions))
 print('Test RMSE: %.3f' % rmse)
-# line plot of observed vs predicted
-pyplot.plot(raw_values[-12:])
-pyplot.plot(predictions)
-pyplot.show()
+
+numlines = 2
+mypalette = color_palette[0:numlines]
+
+source = ColumnDataSource(data=dict(
+    x=series.datetime.values,
+    y=raw_values,
+    labels=labels.values,
+))
+
+p = figure(x_axis_type="datetime", title="Data predictions on training values",
+           width=1080, height=720)
+
+p.line(series.datetime, raw_values, legend="Ground truth", color="#006400")
+p.line(series.datetime[-test_num:], predictions, legend="Predictions", color="#FF4500")
+
+lp = p.line('x', 'y', source=source, line_alpha=0.0, line_color="red",
+            line_width = 10, legend="Anomaly label")
+
+hover = HoverTool(tooltips=[
+        ( 'date',  '@x'),
+        ( 'label', '@labels')],
+    formatters={
+        'date': 'datetime'},
+    renderers=[lp],
+    mode='vline')
+
+p.add_tools(hover)
+
+output_file("Predictions on real data, {} samples.html".format(num_rows))
+
+# # save the plot
+save(p)
+show(p)
