@@ -102,11 +102,12 @@ def forecast_lstm(model, batch_size, X):
 
 
 # load dataset
-num_rows = 100000
+num_rows = 500000
 label_col = 42
+rows_to_skip = 200000
 series, labels = read_dataframe("../../data/training_data.csv", num_rows, usecols=[0, 1, label_col],
-                                has_labels=True)
-
+                                has_labels=True, **{'skiprows': [i for i in range(200000)]})
+print(len(series))
 # transform data to be stationary
 raw_values = series.value0.values
 diff_values = difference(raw_values, 1)
@@ -152,7 +153,7 @@ mypalette = color_palette[0:numlines]
 source = ColumnDataSource(data=dict(
     x=series.datetime.values,
     y=raw_values,
-    labels=labels.values,
+    labels=labels,
 ))
 
 p = figure(x_axis_type="datetime", title="Data predictions on training values",

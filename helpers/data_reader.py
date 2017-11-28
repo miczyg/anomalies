@@ -6,6 +6,11 @@ import numpy as np
 DATASET = "training"
 NUM_SAMPLES = 10000
 
+OVERALL_TRAIN_SAMPLES_NUM = 1587498
+TRAIN_ANOMALIES_OVERALL = 1542
+
+OVERALL_TEST_SAMPLES_NUM = 396543
+TEST_ANOMALIES_OVERALL = 394
 
 def get_single_column(file, column, nrows):
     df = pandas.read_csv(file, nrows=nrows)
@@ -121,7 +126,7 @@ def plot_bokeh(df, labels=None):
     show(p)
 
 
-def read_dataframe(filename, nsamples=1000, usecols=None, has_labels = False):
+def read_dataframe(filename, nsamples=1000, usecols=None, has_labels = False, **kwargs):
     """
 
     :param filename: csv file to read, assuming no headers, datetime as first column (index), label as last
@@ -131,17 +136,14 @@ def read_dataframe(filename, nsamples=1000, usecols=None, has_labels = False):
                 labels -> from last column of csv
     """
     if usecols is None:
-        df = pandas.read_csv(filename, nrows=nsamples, header=None)
+        df = pandas.read_csv(filename, nrows=nsamples, header=None, **kwargs)
     else:
         df = pandas.read_csv(filename, nrows=nsamples, header=None,
-                             usecols=usecols)
+                             usecols=usecols, **kwargs)
     if has_labels:
         df.columns = ["datetime"] + ["value{}".format(i) for i in range(len(df.columns) - 2)] + ["labels"]
-        labels = df["labels"]
+        labels = df["labels"].values
         df = df[df.columns[:-1]]
-        anomalies = [(i, l) for (i, l) in zip(df.datetime, labels.values) if l > 0]
-        print(len(anomalies))
-        print(anomalies)
 
     else:
         df.columns = ["datetime"] + ["value{}".format(i) for i in range(len(df.columns) - 1)]
@@ -152,11 +154,11 @@ def read_dataframe(filename, nsamples=1000, usecols=None, has_labels = False):
 
 def check_labels(filename):
     labels_df = pandas.read_csv(filename, header=None, usecols=[0, 1, 42])
-    # print(labels_df)
-    anomalies = [i for (i,l) in zip(labels_df[labels_df.columns[0]], labels_df[labels_df.columns[-1]].values) if l > 0]
+    labels = labels_df[labels_df.columns[-1]].values
+    print(len(labels))
+    anomalies = [i for (i,l) in zip(labels_df.index, labels_df[labels_df.columns[-1]].values) if l > 0]
     print(len(anomalies))
     print(anomalies)
-
 
 
 if __name__ == '__main__':
