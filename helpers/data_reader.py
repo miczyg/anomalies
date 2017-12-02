@@ -12,6 +12,9 @@ TRAIN_ANOMALIES_OVERALL = 1542
 OVERALL_TEST_SAMPLES_NUM = 396543
 TEST_ANOMALIES_OVERALL = 394
 
+IMPORTANT_FEATURES = [16, 12, 19, 2, 40, 37, 28, 1]
+
+
 def get_single_column(file, column, nrows):
     df = pandas.read_csv(file, nrows=nrows)
     return {'dates': df[df.columns[0]],
@@ -85,7 +88,7 @@ def plot_bokeh(df, labels=None):
     :return:
     """
     from bokeh.plotting import figure, output_file, save, show
-    from bokeh.palettes import Spectral11 as color_palette
+    from bokeh.palettes import Spectral8 as colorPalette
     from bokeh.models import LinearAxis, Range1d
 
     # the number of columns is the number of lines that we will make
@@ -93,7 +96,7 @@ def plot_bokeh(df, labels=None):
     print(numlines)
 
     # import color pallet
-    mypalette = color_palette[0:numlines]
+    mypalette = colorPalette[0:numlines]
     print(len(mypalette))
     # make a list of our columns
     col = []
@@ -126,7 +129,7 @@ def plot_bokeh(df, labels=None):
     show(p)
 
 
-def read_dataframe(filename, nsamples=1000, usecols=None, has_labels = False, **kwargs):
+def read_dataframe(filename, nsamples=1000, usecols=None, has_labels=False, **kwargs):
     """
 
     :param filename: csv file to read, assuming no headers, datetime as first column (index), label as last
@@ -152,23 +155,29 @@ def read_dataframe(filename, nsamples=1000, usecols=None, has_labels = False, **
     df.datetime = pandas.to_datetime(df.datetime)
     return df, labels
 
+
 def check_labels(filename):
-    labels_df = pandas.read_csv(filename, header=None, usecols=[0, 1, 42])
+    labels_df = pandas.read_csv(filename, header=None, usecols=[0, 1, 42], skiprows=202000, nrows=1000)
     labels = labels_df[labels_df.columns[-1]].values
     print(len(labels))
-    anomalies = [i for (i,l) in zip(labels_df.index, labels_df[labels_df.columns[-1]].values) if l > 0]
+    anomalies = [i for (i, l) in zip(labels_df.index, labels_df[labels_df.columns[-1]].values) if l > 0]
     print(len(anomalies))
     print(anomalies)
 
 
 if __name__ == '__main__':
-    # label_col = 42
-    # rows_to_read = NUM_SAMPLES
-    # cols_to_read = 5
-    # used_cols = [i for i in range(cols_to_read + 1)] + [label_col]
+    label_col = 42
+    num_rows = 5000
+    label_col = 42
+    rows_to_skip = 202000
+    use_columns = [0, label_col] + IMPORTANT_FEATURES
+
+    df, labels = read_dataframe("../data/{}_data.csv".format(DATASET), num_rows, usecols=use_columns,
+                                has_labels=True, **{'skiprows': rows_to_skip})
+
     # df, labels = read_dataframe("../data/{}_data.csv".format(DATASET), NUM_SAMPLES)
     # # data
     # # plot_matplot(df)
-    # plot_bokeh(df, labels)
+    plot_bokeh(df, labels)
 
-    check_labels("../data/{}_data.csv".format(DATASET))
+    # check_labels("../data/{}_data.csv".format(DATASET))

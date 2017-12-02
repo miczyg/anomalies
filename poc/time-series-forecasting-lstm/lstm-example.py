@@ -15,9 +15,10 @@ import progressbar
 from helpers.data_reader import read_dataframe
 
 from bokeh.plotting import figure, output_file, save, show, ColumnDataSource
-from bokeh.palettes import Spectral3 as color_palette
+from bokeh.palettes import Spectral11 as color_palette
 from bokeh.models import HoverTool
 
+IMPORTANT_FEATURES = [16, 12, 19, 2, 40, 37, 28]
 
 # sieć dla każdego
 # od awarii iść w dwóch kierunkach -> do sprawdzenia co się dzieje dla każdego parametru
@@ -101,82 +102,84 @@ def forecast_lstm(model, batch_size, X):
     return yhat[0, 0]
 
 
-# load dataset
-num_rows = 500000
-label_col = 42
-rows_to_skip = 200000
-series, labels = read_dataframe("../../data/training_data.csv", num_rows, usecols=[0, 1, label_col],
-                                has_labels=True, **{'skiprows': [i for i in range(200000)]})
-print(len(series))
-# transform data to be stationary
-raw_values = series.value0.values
-diff_values = difference(raw_values, 1)
+if __name__ == '__main__':
+    # load dataset
+    num_rows = 5000
+    label_col = 42
+    rows_to_skip = 202000
+    use_columns = [0, label_col] + IMPORTANT_FEATURES
+    series, labels = read_dataframe("../../data/training_data.csv", num_rows, usecols=use_columns,
+                                    has_labels=True, **{'skiprows': rows_to_skip})
+    print(len(series))
+    # transform data to be stationary
+    raw_values = series.value0.values
+    diff_values = difference(raw_values, 1)
 
-# transform data to be supervised learning
-supervised = timeseries_to_supervised(diff_values, 1)
-supervised_values = supervised.values
-test_prct = 0.25
-test_num = int(test_prct * num_rows)
-# split data into train and test-sets
-train, test = supervised_values[0:-test_num], supervised_values[-test_num:]
+    # transform data to be supervised learning
+    supervised = timeseries_to_supervised(diff_values, 1)
+    supervised_values = supervised.values
+    test_prct = 0.25
+    test_num = int(test_prct * num_rows)
+    # split data into train and test-sets
+    train, test = supervised_values[0:-test_num], supervised_values[-test_num:]
 
-# transform the scale of the data
-scaler, train_scaled, test_scaled = scale(train, test)
+    # transform the scale of the data
+    scaler, train_scaled, test_scaled = scale(train, test)
 
-# fit the model
-lstm_model = fit_lstm(train_scaled, 1, 1, 4)
+    # fit the model
+    lstm_model = fit_lstm(train_scaled, 1, 1, 4)
 
-# forecast the entire training dataset to build up state for forecasting
-train_reshaped = train_scaled[:, 0].reshape(len(train_scaled), 1, 1)
-lstm_model.predict(train_reshaped, batch_size=1)
+    # forecast the entire training dataset to build up state for forecasting
+    train_reshaped = train_scaled[:, 0].reshape(len(train_scaled), 1, 1)
+    lstm_model.predict(train_reshaped, batch_size=1)
 
-# walk-forward validation on the test data
-predictions = list()
-for i in range(len(test_scaled)):
-    # make one-step forecast
-    X, y = test_scaled[i, 0:-1], test_scaled[i, -1]
-    yhat = forecast_lstm(lstm_model, 1, X)
-    # invert scaling
-    yhat = invert_scale(scaler, X, yhat)
-    # invert differencing
-    yhat = inverse_difference(raw_values, yhat, len(test_scaled) + 1 - i)
-    # store forecast
-    predictions.append(yhat)
+    # walk-forward validation on the test data
+    predictions = list()
+    for i in range(len(test_scaled)):
+        # make one-step forecast
+        X, y = test_scaled[i, 0:-1], test_scaled[i, -1]
+        yhat = forecast_lstm(lstm_model, 1, X)
+        # invert scaling
+        yhat = invert_scale(scaler, X, yhat)
+        # invert differencing
+        yhat = inverse_difference(raw_values, yhat, len(test_scaled) + 1 - i)
+        # store forecast
+        predictions.append(yhat)
 
-# report performance
-rmse = sqrt(mean_squared_error(raw_values[-test_num:], predictions))
-print('Test RMSE: %.3f' % rmse)
+    # report performance
+    rmse = sqrt(mean_squared_error(raw_values[-test_num:], predictions))
+    print('Test RMSE: %.3f' % rmse)
 
-numlines = 2
-mypalette = color_palette[0:numlines]
+    numlines = 2
+    mypalette = color_palette[0:numlines]
 
-source = ColumnDataSource(data=dict(
-    x=series.datetime.values,
-    y=raw_values,
-    labels=labels,
-))
+    source = ColumnDataSource(data=dict(
+        x=series.datetime.values,
+        y=raw_values,
+        labels=labels,
+    ))
 
-p = figure(x_axis_type="datetime", title="Data predictions on training values",
-           width=1080, height=720)
+    p = figure(x_axis_type="datetime", title="Data predictions on training values",
+               width=1080, height=720)
 
-p.line(series.datetime, raw_values, legend="Ground truth", color="#006400")
-p.line(series.datetime[-test_num:], predictions, legend="Predictions", color="#FF4500")
+    p.line(series.datetime, raw_values, legend="Ground truth", color="#006400")
+    p.line(series.datetime[-test_num:], predictions, legend="Predictions", color="#FF4500")
 
-lp = p.line('x', 'y', source=source, line_alpha=0.0, line_color="red",
-            line_width = 10, legend="Anomaly label")
+    lp = p.line('x', 'y', source=source, line_alpha=0.0, line_color="red",
+                line_width = 10, legend="Anomaly label")
 
-hover = HoverTool(tooltips=[
-        ( 'date',  '@x'),
-        ( 'label', '@labels')],
-    formatters={
-        'date': 'datetime'},
-    renderers=[lp],
-    mode='vline')
+    hover = HoverTool(tooltips=[
+            ( 'date',  '@x'),
+            ( 'label', '@labels')],
+        formatters={
+            'date': 'datetime'},
+        renderers=[lp],
+        mode='vline')
 
-p.add_tools(hover)
+    p.add_tools(hover)
 
-output_file("Predictions on real data, {} samples.html".format(num_rows))
+    output_file("Predictions on real data, {} samples.html".format(num_rows))
 
-# # save the plot
-save(p)
-show(p)
+    # # save the plot
+    save(p)
+    show(p)
