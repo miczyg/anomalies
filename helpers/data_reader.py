@@ -2,8 +2,8 @@ import datetime
 import pandas
 import numpy as np
 
-# DATASET = "test"
-DATASET = "training"
+DATASET = "test"
+# DATASET = "training"
 NUM_SAMPLES = 10000
 
 OVERALL_TRAIN_SAMPLES_NUM = 1587498
@@ -157,7 +157,7 @@ def read_dataframe(filename, nsamples=1000, usecols=None, has_labels=False, **kw
 
 
 def check_labels(filename):
-    labels_df = pandas.read_csv(filename, header=None, usecols=[0, 1, 42], skiprows=202000, nrows=1000)
+    labels_df = pandas.read_csv(filename, header=None, usecols=[0, 1, 42])
     labels = labels_df[labels_df.columns[-1]].values
     print(len(labels))
     anomalies = [i for (i, l) in zip(labels_df.index, labels_df[labels_df.columns[-1]].values) if l > 0]
@@ -177,7 +177,7 @@ if __name__ == '__main__':
 
     # df, labels = read_dataframe("../data/{}_data.csv".format(DATASET), NUM_SAMPLES)
     # # data
-    # # plot_matplot(df)
-    plot_bokeh(df, labels)
+    # plot_matplot(df)
+    # plot_bokeh(df, labels)
 
-    # check_labels("../data/{}_data.csv".format(DATASET))
+    check_labels("../data/{}_data.csv".format(DATASET))
