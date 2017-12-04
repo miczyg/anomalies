@@ -11,7 +11,7 @@ def parse(x):
 dataset = read_csv('raw.csv', parse_dates=[['year', 'month', 'day', 'hour']], index_col=0, date_parser=parse)
 dataset.drop('No', axis=1, inplace=True)
 # manually specify column names
-dataset.columns = ['pollution', 'dew', 'temp', 'press', 'wnd_dir', 'wnd_spd', 'snow', 'rain']
+dataset.columns = ['dew', 'temp', 'press', 'wnd_dir', 'wnd_spd', 'snow', 'rain', 'broken']
 dataset.index.name = 'date'
 # mark all NA values with 0
 dataset['pollution'].fillna(0, inplace=True)
