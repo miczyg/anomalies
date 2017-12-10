@@ -13,7 +13,7 @@ from bokeh.models import LinearAxis, Range1d
 
 from helpers.data_reader import read_dataframe
 
-IMPORTANT_FEATURES = [16, 12, 19, 2, 40, 37, 28]
+IMPORTANT_FEATURES = [16, 12, 19, 2, 40, 37, 28, 1]
 
 
 def series_to_supervised(data, n_in=1, n_out=1, dropnan=True):
@@ -50,9 +50,9 @@ if __name__ == '__main__':
     # load dataset
     # dataset = read_csv('pollution.csv', header=0, index_col=0)
     cols_to_use = IMPORTANT_FEATURES + [43]
-    dataset = read_csv("../../data/fast_train.csv", usecols=cols_to_use)
-    dataset.columns = ['dew', 'temp', 'press', 'wnd_dir', 'wnd_spd', 'snow', 'rain', 'broken']
-    print (dataset)
+    dataset = read_csv("../../data/fast_train.csv", usecols=cols_to_use, index_col=0, header=0)
+    dataset.columns = ['val1', 'temp', 'press', 'wnd_dir', 'wnd_spd', 'snow', 'rain', 'broken']
+    print(dataset)
     values = dataset.values
     # integer encode direction
     encoder = LabelEncoder()
@@ -72,7 +72,7 @@ if __name__ == '__main__':
 
     # split into train and test sets
     values = reframed.values
-    n_train_hours = 365 * 24  # year of training
+    n_train_hours = int(0.75 * len(values)) # year of training
     train = values[:n_train_hours, :]
     test = values[n_train_hours:, :]
     # split into input and outputs
@@ -86,17 +86,18 @@ if __name__ == '__main__':
     print("TrainX shape: {}, trainY shape: {}, TestX shape: {}, TestY shape: {}".
           format(train_X.shape, train_y.shape, test_X.shape, test_y.shape))
 
+    EPOCHS = 50
     # design network
     model = Sequential()
     model.add(LSTM(50, input_shape=(train_X.shape[1], train_X.shape[2])))
     model.add(Dense(1))
     model.compile(loss='mae', optimizer='adam')
     # fit network
-    history = model.fit(train_X, train_y, epochs=50, batch_size=72, validation_data=(test_X, test_y), verbose=2,
+    history = model.fit(train_X, train_y, epochs=EPOCHS, batch_size=72, validation_data=(test_X, test_y), verbose=2,
                         shuffle=False)
     # plot history
     pyplot.plot(history.history['loss'], label='train')
-    # pyplot.plot(history.history['val_loss'], label='test')
+    pyplot.plot(history.history['val_loss'], label='test')
     pyplot.legend()
     pyplot.show()
 
@@ -116,6 +117,6 @@ if __name__ == '__main__':
     rmse = sqrt(mean_squared_error(inv_y, inv_yhat))
     print('Test RMSE: %.3f' % rmse)
 
-    pyplot.plot(inv_yhat[-100:])
-    pyplot.plot(inv_y[-100:])
+    pyplot.plot(inv_yhat[-1000:])
+    pyplot.plot(inv_y[-1000:])
     pyplot.show()
