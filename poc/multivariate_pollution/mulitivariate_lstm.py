@@ -7,10 +7,6 @@ from keras.layers import Dense, LSTM
 from math import sqrt
 from numpy import concatenate
 
-from bokeh.plotting import figure, output_file, save, show
-from bokeh.palettes import Spectral11 as colorPalette
-from bokeh.models import LinearAxis, Range1d
-
 from helpers.data_reader import read_dataframe
 
 IMPORTANT_FEATURES = [16, 12, 19, 2, 40, 37, 28, 1]
@@ -48,11 +44,16 @@ def load_data(filename):
 
 if __name__ == '__main__':
     # load dataset
-    # dataset = read_csv('pollution.csv', header=0, index_col=0)
     cols_to_use = IMPORTANT_FEATURES + [43]
     dataset = read_csv("../../data/fast_train.csv", usecols=cols_to_use, index_col=0, header=0)
     dataset.columns = ['val1', 'temp', 'press', 'wnd_dir', 'wnd_spd', 'snow', 'rain', 'broken']
-    print(dataset)
+
+    # rearrange colums, data to be predicted should be on first position after date!
+    cols = dataset.columns.tolist()
+    cols = cols[-1:] + cols[:-1]
+    dataset = dataset[cols]
+
+    #preprocessing
     values = dataset.values
     # integer encode direction
     encoder = LabelEncoder()
@@ -63,7 +64,7 @@ if __name__ == '__main__':
     scaler = MinMaxScaler(feature_range=(0, 1))
     scaled = scaler.fit_transform(values)
     # specify the number of lag hours
-    lag_hours = 3
+    lag_hours = 8
     predict_hours = 8
     n_features = 8
     # frame as supervised learning
@@ -117,6 +118,7 @@ if __name__ == '__main__':
     rmse = sqrt(mean_squared_error(inv_y, inv_yhat))
     print('Test RMSE: %.3f' % rmse)
 
-    pyplot.plot(inv_yhat[-1000:])
+    inv_yhat = inv_yhat.astype(int)
+    pyplot.plot(inv_yhat[-1000:], 'o')
     pyplot.plot(inv_y[-1000:])
     pyplot.show()
