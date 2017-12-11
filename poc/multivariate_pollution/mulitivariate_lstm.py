@@ -95,8 +95,8 @@ if __name__ == '__main__':
     print("TrainX shape: {}, trainY shape: {}, TestX shape: {}, TestY shape: {}".
           format(train_X.shape, train_y.shape, test_X.shape, test_y.shape))
 
-    EPOCHS = 50
-    hidden_neurons = 50
+    EPOCHS = 100
+    hidden_neurons = 100
     # design network
     model = Sequential()
     model.add(LSTM(hidden_neurons, input_shape=(train_X.shape[1], train_X.shape[2])))
