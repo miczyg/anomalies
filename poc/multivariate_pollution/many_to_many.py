@@ -5,8 +5,10 @@ import matplotlib.pyplot as plt
 
 from keras.models import Sequential
 from keras.layers import Dense, Activation, LSTM, Dropout, RepeatVector, TimeDistributed
+from pandas import read_csv
 
 EPOCHS = 5
+IMPORTANT_FEATURES = [16, 12, 19, 2, 40, 37, 28, 1]
 
 
 def create_model(steps_before, steps_after, feature_count):
@@ -37,76 +39,51 @@ def train_sinus(model, dataX, dataY, epoch_count):
     """
         trains only the sinus model
     """
-    history = model.fit(dataX, dataY, batch_size=1, nb_epoch=epoch_count, validation_split=0.05)
 
 
-def test_sinus():
-    '''
-        testing how well the network can predict
-        a simple sinus wave.
-    '''
-    t = np.arange(0.0, 4.0, 0.02)
-    sinus = np.sin(2 * np.pi * t)
-    sinus = sinus.reshape((sinus.shape[0], 1))
+def test_model():
+    cols_to_use = IMPORTANT_FEATURES + [43]
+
     n_pre = 50
     n_post = 10
-
-    dX, dY = [], []
-    for i in range(len(sinus) - n_pre - n_post):
-        dX.append(sinus[i:i + n_pre])
-        dY.append(sinus[i + n_pre:i + n_pre + n_post])
-        # dY.append(sinus[i+n_pre])
-    dataX = np.array(dX)
-    dataY = np.array(dY)
-
+    ols_to_use = IMPORTANT_FEATURES + [43]
+    dataset = read_csv("../../data/fast_train.csv", usecols=cols_to_use, index_col=0, header=0)
+    dataset.columns = ['val1', 'temp', 'press', 'wnd_dir', 'wnd_spd', 'snow', 'rain', 'broken']
+    dataY = np.array(dataset[dataset.columns[3]].values)
+    dataX = np.array(range(len(dataY)))
     # create and fit the LSTM network
     print('creating model...')
     model = create_model(n_pre, n_post, 1)
-    train_sinus(model, dataX, dataY, EPOCHS)
+    history = model.fit(dataX, dataY, batch_size=1, nb_epoch=EPOCHS, validation_split=0.05)
 
     # now test
-    t = np.arange(15.0, 19.0, 0.02)
-    sinus = np.sin(2 * np.pi * t)
-    sinus = sinus.reshape((sinus.shape[0], 1))
-
-    dX, dY = [], []
-    for i in range(len(sinus) - n_pre - n_post):
-        dX.append(sinus[i:i + n_pre])
-        dY.append(sinus[i + n_pre:i + n_pre + n_post])
-    dataX = np.array(dX)
-    dataY = np.array(dY)
+    dataset = read_csv("../../data/fast_test.csv", usecols=cols_to_use, index_col=0, header=0)
+    dataset.columns = ['val1', 'temp', 'press', 'wnd_dir', 'wnd_spd', 'snow', 'rain', 'broken']
+    testY = np.array(dataset[dataset.columns[3]].values)
+    testX = np.array(range(len(testY)))
 
     predict = model.predict(dataX)
 
-    # now plot
-    nan_array = np.empty((n_pre - 1))
-    nan_array.fill(np.nan)
-    nan_array2 = np.empty(n_post)
-    nan_array2.fill(np.nan)
-    ind = np.arange(n_pre + n_post)
-
     fig, ax = plt.subplots()
-    for i in range(0, 50, 50):
-        forecasts = np.concatenate((nan_array, dataX[i, -1:, 0], predict[i, :, 0]))
-        ground_truth = np.concatenate((nan_array, dataX[i, -1:, 0], dataY[i, :, 0]))
-        network_input = np.concatenate((dataX[i, :, 0], nan_array2))
 
-        ax.plot(ind, network_input, 'b-x', label='Network input')
-        ax.plot(ind, forecasts, 'r-x', label='Many to many model forecast')
-        ax.plot(ind, ground_truth, 'g-x', label='Ground truth')
+    ind = range(len(dataX) + len(testX))
 
-        plt.xlabel('t')
-        plt.ylabel('sin(t)')
-        plt.title('Sinus Many to Many Forecast')
-        plt.legend(loc='best')
-        plt.show()
-        plt.cla()
+    ax.plot(ind[:len(dataX)], predict, 'b-x', label='Network input')
+    ax.plot(ind[-len(testX):], dataY, 'r-x', label='Many to many model forecast')
+    ax.plot(ind[-len(testX):], testY, 'g-x', label='Ground truth')
+
+    plt.xlabel('t')
+    plt.ylabel('sin(t)')
+    plt.title('Sinus Many to Many Forecast')
+    plt.legend(loc='best')
+    plt.show()
+    plt.cla()
 
 
 def main():
-    test_sinus()
+    test_model()
     return 1
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    main()

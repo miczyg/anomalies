@@ -3,7 +3,7 @@ from pandas import read_csv, DataFrame, concat
 from sklearn.preprocessing import MinMaxScaler, LabelEncoder
 from sklearn.metrics import mean_squared_error
 from keras.models import Sequential
-from keras.layers import Dense, LSTM
+from keras.layers import Dense, LSTM, RepeatVector, TimeDistributed, Activation
 from math import sqrt
 from numpy import concatenate
 
@@ -45,7 +45,16 @@ def load_data(filename):
 if __name__ == '__main__':
     # load dataset
     cols_to_use = IMPORTANT_FEATURES + [43]
-    dataset = read_csv("../../data/fast_train.csv", usecols=cols_to_use, index_col=0, header=0)
+    # specify the number of lag hours
+    lag_hours = 8
+    predict_hours = 8
+    n_features = 8
+    train_dataset = read_csv("../../data/fast_train.csv", usecols=cols_to_use, index_col=0, header=None)
+    test_dataset = read_csv("../../data/fast_test.csv", usecols=cols_to_use, index_col=0, header=None)
+
+    frames = [train_dataset, test_dataset]
+    dataset = concat(frames)
+    print(dataset)
     dataset.columns = ['val1', 'temp', 'press', 'wnd_dir', 'wnd_spd', 'snow', 'rain', 'broken']
 
     # rearrange colums, data to be predicted should be on first position after date!
@@ -63,18 +72,17 @@ if __name__ == '__main__':
     # normalize features
     scaler = MinMaxScaler(feature_range=(0, 1))
     scaled = scaler.fit_transform(values)
-    # specify the number of lag hours
-    lag_hours = 8
-    predict_hours = 8
-    n_features = 8
+
     # frame as supervised learning
     reframed = series_to_supervised(scaled, lag_hours, predict_hours)
     print("Reframed shape: ", reframed.shape)
 
     # split into train and test sets
     values = reframed.values
-    n_train_hours = int(0.75 * len(values)) # year of training
-    train = values[:n_train_hours, :]
+    n_train_hours = int(0.5 * len(values)) # year of training
+    train = values[:n_train_hours]
+
+    # read test dataset
     test = values[n_train_hours:, :]
     # split into input and outputs
     n_obs = (lag_hours + predict_hours) * n_features
@@ -88,9 +96,10 @@ if __name__ == '__main__':
           format(train_X.shape, train_y.shape, test_X.shape, test_y.shape))
 
     EPOCHS = 50
+    hidden_neurons = 50
     # design network
     model = Sequential()
-    model.add(LSTM(50, input_shape=(train_X.shape[1], train_X.shape[2])))
+    model.add(LSTM(hidden_neurons, input_shape=(train_X.shape[1], train_X.shape[2])))
     model.add(Dense(1))
     model.compile(loss='mae', optimizer='adam')
     # fit network
@@ -119,6 +128,6 @@ if __name__ == '__main__':
     print('Test RMSE: %.3f' % rmse)
 
     inv_yhat = inv_yhat.astype(int)
-    pyplot.plot(inv_yhat[-1000:], 'o')
-    pyplot.plot(inv_y[-1000:])
+    pyplot.plot(inv_yhat, 'o')
+    pyplot.plot(inv_y)
     pyplot.show()
