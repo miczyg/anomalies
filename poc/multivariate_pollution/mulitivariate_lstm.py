@@ -6,6 +6,7 @@ from keras.models import Sequential
 from keras.layers import Dense, LSTM, RepeatVector, TimeDistributed, Activation
 from math import sqrt
 from numpy import concatenate
+import numpy as np
 
 from helpers.data_reader import read_dataframe
 
@@ -45,16 +46,20 @@ def load_data(filename):
 if __name__ == '__main__':
     # load dataset
     cols_to_use = IMPORTANT_FEATURES + [43]
+
     # specify the number of lag hours
-    lag_hours = 8
+    back_window = 8
     predict_hours = 8
     n_features = 8
     train_dataset = read_csv("../../data/fast_train.csv", usecols=cols_to_use, index_col=0, header=None)
     test_dataset = read_csv("../../data/fast_test.csv", usecols=cols_to_use, index_col=0, header=None)
 
+    # join datasets for easier preprocessing
     frames = [train_dataset, test_dataset]
     dataset = concat(frames)
-    print(dataset)
+    # print(dataset)
+
+    # some meaningful names to columns
     dataset.columns = ['val1', 'temp', 'press', 'wnd_dir', 'wnd_spd', 'snow', 'rain', 'broken']
 
     # rearrange colums, data to be predicted should be on first position after date!
@@ -74,27 +79,29 @@ if __name__ == '__main__':
     scaled = scaler.fit_transform(values)
 
     # frame as supervised learning
-    reframed = series_to_supervised(scaled, lag_hours, predict_hours)
+    reframed = series_to_supervised(scaled, back_window, predict_hours)
     print("Reframed shape: ", reframed.shape)
 
     # split into train and test sets
     values = reframed.values
-    n_train_hours = int(0.5 * len(values)) # year of training
+    n_train_hours = int(0.5 * len(values))
     train = values[:n_train_hours]
 
+    # prepare datasets for lstm
     # read test dataset
     test = values[n_train_hours:, :]
     # split into input and outputs
-    n_obs = (lag_hours + predict_hours) * n_features
+    n_obs = (back_window + predict_hours) * n_features
     train_X, train_y = train[:, :n_obs], train[:, -n_features]
     test_X, test_y = test[:, :n_obs], test[:, -n_features]
     print("TrainX shape: {}, trainX len: {}, trainY shape: {}".format(train_X.shape, len(train_X), train_y.shape))
     # reshape input to be 3D [samples, timesteps, features]
-    train_X = train_X.reshape((train_X.shape[0], lag_hours + predict_hours, n_features))
-    test_X = test_X.reshape((test_X.shape[0], lag_hours + predict_hours, n_features))
+    train_X = train_X.reshape((train_X.shape[0], back_window + predict_hours, n_features))
+    test_X = test_X.reshape((test_X.shape[0], back_window + predict_hours, n_features))
     print("TrainX shape: {}, trainY shape: {}, TestX shape: {}, TestY shape: {}".
           format(train_X.shape, train_y.shape, test_X.shape, test_y.shape))
 
+    # network parameters
     EPOCHS = 100
     hidden_neurons = 100
     # design network
@@ -105,7 +112,7 @@ if __name__ == '__main__':
     # fit network
     history = model.fit(train_X, train_y, epochs=EPOCHS, batch_size=72, validation_data=(test_X, test_y), verbose=2,
                         shuffle=False)
-    # plot history
+    # plot training history
     pyplot.plot(history.history['loss'], label='train')
     pyplot.plot(history.history['val_loss'], label='test')
     pyplot.legend()
@@ -113,6 +120,11 @@ if __name__ == '__main__':
 
     # make a prediction
     yhat = model.predict(test_X)
+    print(len(yhat))
+    print(yhat.shape)
+    print(yhat)
+
+
     test_X = test_X.reshape((test_X.shape[0], n_obs))
     # invert scaling for forecast
     inv_yhat = concatenate((yhat, test_X[:, -7:]), axis=1)
@@ -127,7 +139,27 @@ if __name__ == '__main__':
     rmse = sqrt(mean_squared_error(inv_y, inv_yhat))
     print('Test RMSE: %.3f' % rmse)
 
+    # convert to int
     inv_yhat = inv_yhat.astype(int)
-    pyplot.plot(inv_yhat, 'o')
-    pyplot.plot(inv_y)
-    pyplot.show()
+    inv_y = inv_y.astype(int)
+
+    # compute accurracy
+    subs = np.subtract(inv_yhat, inv_y)
+    diff = np.abs(np.sum(subs))
+    print("Overal diffrences: {}".format(diff))
+
+    overall_acc = (len(inv_y) - diff) / len(inv_y)
+    print("Overall accuracy: {}".format(overall_acc))
+
+    # cut only ones
+    pred_ones = np.count_nonzero(inv_yhat)
+    test_ones = np.count_nonzero(inv_y)
+
+    anomaly_acc = pred_ones / test_ones
+    print("Anomaly accuracy: {}".format(anomaly_acc))
+
+    # plot only if no more than 1000 test values
+    if len(test_y) < 10000:
+        pyplot.plot(inv_yhat, 'o')
+        pyplot.plot(inv_y)
+        pyplot.show()
