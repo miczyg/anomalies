@@ -84,7 +84,8 @@ if __name__ == '__main__':
 
     # split into train and test sets
     values = reframed.values
-    n_train_hours = int(0.5 * len(values))
+    n_train_hours = len(train_dataset)
+    print(n_train_hours)
     train = values[:n_train_hours]
 
     # prepare datasets for lstm
