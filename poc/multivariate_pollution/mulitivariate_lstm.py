@@ -10,7 +10,8 @@ import numpy as np
 
 from helpers.data_reader import read_dataframe
 
-IMPORTANT_FEATURES = [16, 12, 19, 2, 40, 37, 28, 1]
+# IMPORTANT_FEATURES = [16, 12, 19, 2, 40, 37, 28, 1]
+IMPORTANT_FEATURES = [15, 11, 18, 1, 39, 36, 27, 0]
 
 
 def series_to_supervised(data, n_in=1, n_out=1, dropnan=True):
@@ -45,14 +46,14 @@ def load_data(filename):
 
 if __name__ == '__main__':
     # load dataset
-    cols_to_use = IMPORTANT_FEATURES + [43]
+    cols_to_use = IMPORTANT_FEATURES + [42]
 
     # specify the number of lag hours
     back_window = 8
     predict_hours = 8
     n_features = 8
-    train_dataset = read_csv("../../data/fast_train.csv", usecols=cols_to_use, index_col=0, header=None)
-    test_dataset = read_csv("../../data/fast_test.csv", usecols=cols_to_use, index_col=0, header=None)
+    train_dataset = read_csv("../../data/training_data.csv", usecols=cols_to_use, index_col=0, header=None)
+    test_dataset = read_csv("../../data/test_data.csv", usecols=cols_to_use, index_col=0, header=None)
 
     # join datasets for easier preprocessing
     frames = [train_dataset, test_dataset]
