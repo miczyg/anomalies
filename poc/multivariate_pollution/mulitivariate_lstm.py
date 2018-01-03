@@ -1,3 +1,6 @@
+import time
+
+from keras.callbacks import Callback
 from matplotlib import pyplot
 from pandas import read_csv, DataFrame, concat
 from sklearn.preprocessing import MinMaxScaler, LabelEncoder
@@ -42,6 +45,16 @@ def load_data(filename):
     data, labels = read_dataframe(filename, nsamples=5000, usecols=cols_to_use, has_labels=True)
     return data, labels
 
+class IntervalEvaluation(Callback):
+    def __init__(self):
+        super(Callback, self).__init__()
+        self.end = time.time()
+
+    def on_epoch_end(self, epoch, logs={}):
+        end = time.time()
+        time_diff = end - self.end
+        self.end = end
+        print("interval evaluation - epoch: {:d} - time: {:.6f}".format(epoch, time_diff))
 
 if __name__ == '__main__':
     # load dataset
@@ -53,6 +66,8 @@ if __name__ == '__main__':
     n_features = 8
     train_dataset = read_csv("../../data/fast_train.csv", usecols=cols_to_use, index_col=0, header=None)
     test_dataset = read_csv("../../data/fast_test.csv", usecols=cols_to_use, index_col=0, header=None)
+
+    ival = IntervalEvaluation()
 
     # join datasets for easier preprocessing
     frames = [train_dataset, test_dataset]
@@ -112,7 +127,7 @@ if __name__ == '__main__':
     model.compile(loss='mae', optimizer='adam')
     # fit network
     history = model.fit(train_X, train_y, epochs=EPOCHS, batch_size=72, validation_data=(test_X, test_y), verbose=2,
-                        shuffle=False)
+                        shuffle=False, callbacks=[ival])
     # plot training history
     pyplot.plot(history.history['loss'], label='train')
     pyplot.plot(history.history['val_loss'], label='test')
