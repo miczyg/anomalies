@@ -101,3 +101,4 @@ ENV/
 .mypy_cache/
 /data/training_data.csv
 /data/test_data.csv
+/data/*.csv
