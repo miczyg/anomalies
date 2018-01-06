@@ -8,3 +8,4 @@ sklearn
 scipy
 progressbar2
 bokeh
+h5py

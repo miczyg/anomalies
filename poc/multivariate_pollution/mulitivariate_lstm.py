@@ -11,7 +11,8 @@ from bokeh.plotting import figure, output_file, save, show, ColumnDataSource
 from bokeh.palettes import Spectral11 as color_palette
 from bokeh.models import HoverTool
 from keras.models import load_model
-from data_reader import read_dataframe
+from helpers.data_reader import read_dataframe
+from helpers.data_reader import series_to_supervised
 
 import numpy as np
 import time
@@ -19,33 +20,6 @@ import time
 # IMPORTANT_FEATURES = [16, 12, 19, 2, 40, 37, 28, 1]
 IMPORTANT_FEATURES = [15, 11, 18, 1, 39, 36, 27, 0]
 
-def series_to_supervised(data, n_in=1, n_out=1, dropnan=True):
-    n_vars = 1 if type(data) is list else data.shape[1]
-    df = DataFrame(data)
-    cols, names = list(), list()
-    # input sequence (t-n, ... t-1)
-    for i in range(n_in, 0, -1):
-        cols.append(df.shift(i))
-        names += [('var%d(t-%d)' % (j + 1, i)) for j in range(n_vars)]
-    # forecast sequence (t, t+1, ... t+n)
-    for i in range(0, n_out):
-        cols.append(df.shift(-i))
-        if i == 0:
-            names += [('var%d(t)' % (j + 1)) for j in range(n_vars)]
-        else:
-            names += [('var%d(t+%d)' % (j + 1, i)) for j in range(n_vars)]
-    # put it all together
-    agg = concat(cols, axis=1)
-    agg.columns = names
-    # drop rows with NaN values
-    if dropnan:
-        agg.dropna(inplace=True)
-    return agg
-
-def load_data(filename):
-     # dates + features + labels
-    data, labels = read_dataframe(filename, nsamples=15000000, usecols=cols_to_use, has_labels=True)
-    return data, labels
 
 class IntervalEvaluation(Callback):
     def __init__(self):
@@ -58,10 +32,11 @@ class IntervalEvaluation(Callback):
         self.end = end
         print("interval evaluation - epoch: {:d} - time: {:.6f}".format(epoch, time_diff))
 
+
 if __name__ == '__main__':
     # load dataset
-    cols_to_use = IMPORTANT_FEATURES + [43]
-    # cols_to_use = IMPORTANT_FEATURES + [42]
+    # cols_to_use = IMPORTANT_FEATURES + [43]
+    cols_to_use = IMPORTANT_FEATURES + [42]
 
     # specify the number of lag hours
     back_window = 8
