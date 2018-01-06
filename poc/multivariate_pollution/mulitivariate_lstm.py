@@ -67,8 +67,8 @@ if __name__ == '__main__':
     back_window = 8
     predict_hours = 8
     n_features = 8
-    train_dataset = read_csv("../../data/fast_train4.csv", usecols=cols_to_use, index_col=0, header=None)
-    test_dataset = read_csv("../../data/fast_test4.csv", usecols=cols_to_use, index_col=0, header=None)
+    train_dataset = read_csv("../../data/fast_train.csv", usecols=cols_to_use, index_col=0, header=None)
+    test_dataset = read_csv("../../data/fast_test.csv", usecols=cols_to_use, index_col=0, header=None)
 
     ival = IntervalEvaluation()
 
@@ -127,7 +127,7 @@ if __name__ == '__main__':
           format(train_X.shape, train_y.shape, test_X.shape, test_y.shape))
 
     # network parameters
-    EPOCHS = 50
+    EPOCHS = 100
     hidden_neurons = 100
 
     # design network
@@ -142,7 +142,7 @@ if __name__ == '__main__':
     history = model.fit(train_X, train_y, epochs=EPOCHS, batch_size=72, validation_data=(test_X, test_y), verbose=2,
                         shuffle=False, callbacks=[ival])
 
-    model.save('model_large_50.h5')
+    model.save('model_5k_100e.h5')
 
     # plot training history
     pyplot.plot(history.history['loss'], label='train')
