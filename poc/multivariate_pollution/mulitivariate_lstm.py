@@ -84,6 +84,13 @@ if __name__ == '__main__':
     print(n_train_hours)
     train = values[:n_train_hours]
 
+    # split to train and validation
+    validation_perc = 0.25
+    validation_samples = int(0.25 * len(train))
+    print("Train samples: {}".format(validation_samples))
+    validation = train[-validation_samples:]
+    train = train[:-validation_samples]
+
     # prepare datasets for lstm
 
     # read test dataset
@@ -93,11 +100,13 @@ if __name__ == '__main__':
     n_obs = (back_window + predict_hours) * n_features
     train_X, train_y = train[:, :n_obs], train[:, -n_features]
     test_X, test_y = test[:, :n_obs], test[:, -n_features]
+    validate_X, validate_Y = validation[:, :n_obs], validation[:, -n_features]
     print("TrainX shape: {}, TrainX len: {}, TrainY shape: {}".format(train_X.shape, len(train_X), train_y.shape))
 
     # reshape input to be 3D [samples, timesteps, features]
     train_X = train_X.reshape((train_X.shape[0], back_window + predict_hours, n_features))
     test_X = test_X.reshape((test_X.shape[0], back_window + predict_hours, n_features))
+    validate_X = validate_X.reshape((validate_X.shape[0], back_window + predict_hours, n_features))
     print("TrainX shape: {}, TrainY shape: {}, TestX shape: {}, TestY shape: {}".
           format(train_X.shape, train_y.shape, test_X.shape, test_y.shape))
 
@@ -113,9 +122,11 @@ if __name__ == '__main__':
 
     # model = load_model('my_model.h5')
 
-    # fit network
-    history = model.fit(train_X, train_y, epochs=EPOCHS, batch_size=72, validation_data=(test_X, test_y), verbose=2,
-                        shuffle=False, callbacks=[ival])
+    # fit network with training and evaluation data
+    history = model.fit(train_X, train_y,
+                        epochs=EPOCHS, batch_size=72,
+                        validation_data=(validate_X, validate_Y),
+                        verbose=2, shuffle=False, callbacks=[ival])
 
     model.save('model_15e_new.h5')
 

@@ -11,28 +11,34 @@ TEST_DATA_PATH = "data/test_data.csv"
 
 # TODO: podzielić i puścić dla sliców :)
 def main():
-    window_size = 8
+
+
     cols_to_use = IMPORTANT_FEATURES + [42]
     model = load_model(MODEL_PATH)
     dataset = read_csv(TEST_DATA_PATH, usecols=cols_to_use, index_col=0, header=None)
 
     # change order to have anomaly in first place
-    dataset = rearrange_data(dataset[:100])
+    dataset = rearrange_data(dataset)
     # print(dataset)
 
     scaler = MinMaxScaler(feature_range=(0, 1))
 
-    dataset, data_y = preprocess_data(dataset, scaler, window_size, 8)
+    dataset, data_y = preprocess_data(dataset, scaler)
 
-    predicted = model.predict(dataset[:30])
+    # sample
+    # predicted = model.predict(dataset[:30])
+    #
+    # print("=============PREDICTION RESULT===============")
+    # print(len(predicted))
+    # print(predicted)
+    # print("============================")
 
-    print("=============PREDICTION RESULT===============")
-    print(predicted)
-    print("============================")
 
 
+def preprocess_data(dataset, scaler):
+    window_size = 8
+    n_features = 8
 
-def preprocess_data(dataset, scaler, window_size, n_features):
     # preprocessing
     values = dataset.values
 
