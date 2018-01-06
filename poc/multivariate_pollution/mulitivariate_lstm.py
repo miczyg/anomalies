@@ -1,3 +1,4 @@
+from keras.callbacks import Callback
 from matplotlib import pyplot
 from pandas import read_csv, DataFrame, concat
 from sklearn.preprocessing import MinMaxScaler, LabelEncoder
@@ -6,12 +7,17 @@ from keras.models import Sequential
 from keras.layers import Dense, LSTM, RepeatVector, TimeDistributed, Activation
 from math import sqrt
 from numpy import concatenate
+from bokeh.plotting import figure, output_file, save, show, ColumnDataSource
+from bokeh.palettes import Spectral11 as color_palette
+from bokeh.models import HoverTool
+from keras.models import load_model
+from data_reader import read_dataframe
+
 import numpy as np
+import time
 
-from helpers.data_reader import read_dataframe
-
-IMPORTANT_FEATURES = [16, 12, 19, 2, 40, 37, 28, 1]
-
+# IMPORTANT_FEATURES = [16, 12, 19, 2, 40, 37, 28, 1]
+IMPORTANT_FEATURES = [15, 11, 18, 1, 39, 36, 27, 0]
 
 def series_to_supervised(data, n_in=1, n_out=1, dropnan=True):
     n_vars = 1 if type(data) is list else data.shape[1]
@@ -36,23 +42,35 @@ def series_to_supervised(data, n_in=1, n_out=1, dropnan=True):
         agg.dropna(inplace=True)
     return agg
 
-
 def load_data(filename):
      # dates + features + labels
-    data, labels = read_dataframe(filename, nsamples=5000, usecols=cols_to_use, has_labels=True)
+    data, labels = read_dataframe(filename, nsamples=15000000, usecols=cols_to_use, has_labels=True)
     return data, labels
 
+class IntervalEvaluation(Callback):
+    def __init__(self):
+        super(Callback, self).__init__()
+        self.end = time.time()
+
+    def on_epoch_end(self, epoch, logs={}):
+        end = time.time()
+        time_diff = end - self.end
+        self.end = end
+        print("interval evaluation - epoch: {:d} - time: {:.6f}".format(epoch, time_diff))
 
 if __name__ == '__main__':
     # load dataset
     cols_to_use = IMPORTANT_FEATURES + [43]
+    # cols_to_use = IMPORTANT_FEATURES + [42]
 
     # specify the number of lag hours
     back_window = 8
     predict_hours = 8
     n_features = 8
-    train_dataset = read_csv("../../data/fast_train.csv", usecols=cols_to_use, index_col=0, header=None)
-    test_dataset = read_csv("../../data/fast_test.csv", usecols=cols_to_use, index_col=0, header=None)
+    train_dataset = read_csv("../../data/training_data.csv", usecols=cols_to_use, index_col=0, header=None)
+    test_dataset = read_csv("../../data/test_data.csv", usecols=cols_to_use, index_col=0, header=None)
+
+    ival = IntervalEvaluation()
 
     # join datasets for easier preprocessing
     frames = [train_dataset, test_dataset]
@@ -69,11 +87,14 @@ if __name__ == '__main__':
 
     #preprocessing
     values = dataset.values
+
     # integer encode direction
     encoder = LabelEncoder()
     values[:, 4] = encoder.fit_transform(values[:, 4])
+
     # ensure all data is float
     values = values.astype('float32')
+
     # normalize features
     scaler = MinMaxScaler(feature_range=(0, 1))
     scaled = scaler.fit_transform(values)
@@ -89,42 +110,72 @@ if __name__ == '__main__':
     train = values[:n_train_hours]
 
     # prepare datasets for lstm
+
     # read test dataset
     test = values[n_train_hours:, :]
+
     # split into input and outputs
     n_obs = (back_window + predict_hours) * n_features
     train_X, train_y = train[:, :n_obs], train[:, -n_features]
     test_X, test_y = test[:, :n_obs], test[:, -n_features]
-    print("TrainX shape: {}, trainX len: {}, trainY shape: {}".format(train_X.shape, len(train_X), train_y.shape))
+    print("TrainX shape: {}, TrainX len: {}, TrainY shape: {}".format(train_X.shape, len(train_X), train_y.shape))
+
     # reshape input to be 3D [samples, timesteps, features]
     train_X = train_X.reshape((train_X.shape[0], back_window + predict_hours, n_features))
     test_X = test_X.reshape((test_X.shape[0], back_window + predict_hours, n_features))
-    print("TrainX shape: {}, trainY shape: {}, TestX shape: {}, TestY shape: {}".
+    print("TrainX shape: {}, TrainY shape: {}, TestX shape: {}, TestY shape: {}".
           format(train_X.shape, train_y.shape, test_X.shape, test_y.shape))
 
     # network parameters
-    EPOCHS = 100
+    EPOCHS = 15
     hidden_neurons = 100
+
     # design network
     model = Sequential()
     model.add(LSTM(hidden_neurons, input_shape=(train_X.shape[1], train_X.shape[2])))
     model.add(Dense(1))
     model.compile(loss='mae', optimizer='adam')
+
+    # model = load_model('my_model.h5')
+
     # fit network
     history = model.fit(train_X, train_y, epochs=EPOCHS, batch_size=72, validation_data=(test_X, test_y), verbose=2,
-                        shuffle=False)
+                        shuffle=False, callbacks=[ival])
+
+    model.save('model_15e_new.h5')
+
     # plot training history
     pyplot.plot(history.history['loss'], label='train')
     pyplot.plot(history.history['val_loss'], label='test')
     pyplot.legend()
     pyplot.show()
 
+    # numlines = 2
+    # mypalette = color_palette[0:numlines]
+
+    # p = figure(x_axis_type="datetime", title="Data predictions on training values",
+    #            width=1080, height=720)
+
+    # print(dataset.reset_index()['Date'])
+    # p.line(dataset.values[1], history.history['loss'], legend="Ground truth", color="#006400")
+    # p.line(dataset.values[1], history.history['val_loss'], legend="Predictions", color="#FF4500")
+
+    # hover = HoverTool(tooltips=[
+    #     ('date', '@x'),
+    #     ('label', '@labels')],
+    #     formatters={
+    #         'date': 'datetime'},
+    #     renderers=[p],
+    #     mode='vline')
+    #
+    # p.add_tools(hover)
+    # show(p)
+
     # make a prediction
     yhat = model.predict(test_X)
     print(len(yhat))
     print(yhat.shape)
     print(yhat)
-
 
     test_X = test_X.reshape((test_X.shape[0], n_obs))
     # invert scaling for forecast

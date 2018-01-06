@@ -108,8 +108,8 @@ if __name__ == '__main__':
     num_rows = 5000
     label_col = 42
     use_columns = [0, label_col] + IMPORTANT_FEATURES
-    TRAINING_DATA = "../../data/fast_train.csv"
-    TEST_DATA = "../../data/fast_test.csv"
+    TRAINING_DATA = "../../data/train_5k.csv"
+    TEST_DATA = "../../data/test_5k.csv"
     train_series, train_labels = read_dataframe(TRAINING_DATA, num_rows, usecols=use_columns,
                                                 has_labels=True)
     test_series, test_labels = read_dataframe(TRAINING_DATA, num_rows, usecols=use_columns,
