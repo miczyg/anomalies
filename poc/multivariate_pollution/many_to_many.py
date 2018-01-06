@@ -47,7 +47,7 @@ def test_model():
     n_pre = 50
     n_post = 10
     ols_to_use = IMPORTANT_FEATURES + [43]
-    dataset = read_csv("../../data/fast_train.csv", usecols=cols_to_use, index_col=0, header=0)
+    dataset = read_csv("../../data/train_5k.csv", usecols=cols_to_use, index_col=0, header=0)
     dataset.columns = ['val1', 'temp', 'press', 'wnd_dir', 'wnd_spd', 'snow', 'rain', 'broken']
     dataY = np.array(dataset[dataset.columns[3]].values)
     dataX = np.array(range(len(dataY)))
@@ -57,7 +57,7 @@ def test_model():
     history = model.fit(dataX, dataY, batch_size=1, nb_epoch=EPOCHS, validation_split=0.05)
 
     # now test
-    dataset = read_csv("../../data/fast_test.csv", usecols=cols_to_use, index_col=0, header=0)
+    dataset = read_csv("../../data/test_5k.csv", usecols=cols_to_use, index_col=0, header=0)
     dataset.columns = ['val1', 'temp', 'press', 'wnd_dir', 'wnd_spd', 'snow', 'rain', 'broken']
     testY = np.array(dataset[dataset.columns[3]].values)
     testX = np.array(range(len(testY)))

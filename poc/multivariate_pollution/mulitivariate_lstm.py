@@ -11,13 +11,13 @@ from bokeh.plotting import figure, output_file, save, show, ColumnDataSource
 from bokeh.palettes import Spectral11 as color_palette
 from bokeh.models import HoverTool
 from keras.models import load_model
-from helpers.data_reader import read_dataframe
+from data_reader import read_dataframe
 
 import numpy as np
 import time
 
-IMPORTANT_FEATURES = [16, 12, 19, 2, 40, 37, 28, 1]
-# IMPORTANT_FEATURES = [15, 11, 18, 1, 39, 36, 27, 0]
+# IMPORTANT_FEATURES = [16, 12, 19, 2, 40, 37, 28, 1]
+IMPORTANT_FEATURES = [15, 11, 18, 1, 39, 36, 27, 0]
 
 def series_to_supervised(data, n_in=1, n_out=1, dropnan=True):
     n_vars = 1 if type(data) is list else data.shape[1]
@@ -44,7 +44,7 @@ def series_to_supervised(data, n_in=1, n_out=1, dropnan=True):
 
 def load_data(filename):
      # dates + features + labels
-    data, labels = read_dataframe(filename, nsamples=15000, usecols=cols_to_use, has_labels=True)
+    data, labels = read_dataframe(filename, nsamples=15000000, usecols=cols_to_use, has_labels=True)
     return data, labels
 
 class IntervalEvaluation(Callback):
@@ -67,8 +67,8 @@ if __name__ == '__main__':
     back_window = 8
     predict_hours = 8
     n_features = 8
-    train_dataset = read_csv("../../data/fast_train.csv", usecols=cols_to_use, index_col=0, header=None)
-    test_dataset = read_csv("../../data/fast_test.csv", usecols=cols_to_use, index_col=0, header=None)
+    train_dataset = read_csv("../../data/training_data.csv", usecols=cols_to_use, index_col=0, header=None)
+    test_dataset = read_csv("../../data/test_data.csv", usecols=cols_to_use, index_col=0, header=None)
 
     ival = IntervalEvaluation()
 
@@ -127,7 +127,7 @@ if __name__ == '__main__':
           format(train_X.shape, train_y.shape, test_X.shape, test_y.shape))
 
     # network parameters
-    EPOCHS = 100
+    EPOCHS = 15
     hidden_neurons = 100
 
     # design network
@@ -142,7 +142,7 @@ if __name__ == '__main__':
     history = model.fit(train_X, train_y, epochs=EPOCHS, batch_size=72, validation_data=(test_X, test_y), verbose=2,
                         shuffle=False, callbacks=[ival])
 
-    model.save('model_5k_100e.h5')
+    model.save('model_15e_new.h5')
 
     # plot training history
     pyplot.plot(history.history['loss'], label='train')
